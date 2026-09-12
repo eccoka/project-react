@@ -1,0 +1,162 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services;
+
+use App\Models\Item;
+use App\Models\User;
+use App\Models\Brand;
+use App\Enums\ItemUnit;
+use App\Models\ItemGroup;
+use App\Models\Itemparam;
+use Illuminate\Support\Facades\DB;
+use App\Http\Resources\ItemResource;
+use App\Http\Requests\StoreItemRequest;
+use App\Http\Requests\UpdateItemRequest;
+
+class ItemService
+{
+    public function index()
+    {
+        $itemsQuery = DB::table("items")
+            ->join('brands', 'items.brandId', '=', 'brands.id')
+            ->join('itemgroups', 'items.groupId', '=', 'itemgroups.id')
+            ->select(
+                'items.*',
+                'brands.name as brand',
+                'itemgroups.name as group'
+            )
+            ->orderBy('itemgroups.name', 'asc');
+
+        return $itemsQuery;
+    }
+
+    public function show(Item $item): ItemResource|array
+    {
+
+        $pm_ids = explode(',', $item->parameter_ids);
+        foreach ($pm_ids as $key => $value) {
+            $itemparams[$key] = Itemparam::query()->select('param_name', 'value')->where('id', $value)->first();
+        }
+
+        $item->group = ItemGroup::query()->select('name')->where('id', $item->groupId)->first()->name;
+        $item->brand = Brand::query()->select('name')->where('id', $item->brandId)->first()->name;
+        $item->unit = ItemUnit::from((int) $item->unit)->getItemUnitName();
+        $item->created_by = User::query()->select('name')->where('id', $item->created_by)->first()->name;
+        if ($item->updated_at !== $item->created_at) {
+            $item->updated_by = User::query()->select('name')->where('id', $item->updated_by)->first()->name;
+        }
+
+        //$item = new ItemResource($item);
+        $items = ['item' => $item, 'itemparams' => $itemparams];
+
+        return $items;
+    }
+
+    public function edit(Item $item, $request): array
+    {
+        $itemparams = [];
+        $parameters = [];
+        
+
+        $pm_ids = explode(',', $item->parameter_ids);
+        foreach ($pm_ids as $key => $value) {
+            $itemparams[$key] = Itemparam::query()->select('param_name', 'value')->where('id', $value)->first();
+        }
+
+        $group = ItemGroup::query()->select('name')->where('id', $item->groupId)->first();
+
+        $item->group = $group->name;
+        $item->brand = Brand::query()->select('name')->where('id', $item->brandId)->first()->name;
+        $item->unit = ItemUnit::from((int) $item->unit)->getItemUnitName();
+        $item->created_by = User::query()->select('name')->where('id', $item->created_by)->first()->name;
+        if ($item->updated_at !== $item->created_at) {
+            $item->updated_by = User::query()->select('name')->where('id', $item->updated_by)->first()->name;
+        }
+
+        if ($item->parameter_ids !== '') {
+            $parameters = Itemparam::query()->where('status', 'active')
+                ->where('groupid', $item->groupId)
+                ->orderBy('param_name')->get()->toArray();
+
+            // Extract existing parameter names from itemparams
+            $existingParamNames = array_map(function ($param) {
+                return $param->param_name;
+            }, $itemparams);
+
+            // Filter out parameters that already exist in itemparams
+            $parameters = array_filter($parameters, function ($parameter) use ($existingParamNames) {
+                return !in_array($parameter['param_name'], $existingParamNames);
+            });
+
+            // Re-index array to ensure sequential keys
+            $parameters = array_values($parameters);
+        }
+        
+
+        //dd($parameters, $itemparams);
+
+        $items = ['item' => $item, 'itemparams' => $itemparams, 'parameters' => $parameters];
+        return $items;
+    }
+
+    public function store(StoreItemRequest $request): Item
+    {
+        $request_data = $request->validated();
+        $item = new Item();
+
+        if ($request->itemgroup_sub2 !== null) {
+            $item->groupId = $request->itemgroup_sub2;
+        } elseif ($request->itemgroup_sub !== null) {
+            $item->groupId = $request->itemgroup_sub;
+        } else {
+            $item->groupId = $request->itemgroup_main;
+        }
+
+        // Remove this second instance creation that was erasing the groupId
+        // $item = new Item();
+
+        $item->brandId = $request_data['brand'];
+        $item->barcode = $request_data['barcode'];
+        $item->name = $request_data['name'];
+        $item->website = $request_data['website'];
+        //    $item->parameter_ids = implode(',', $request->input('parameter_ids'));
+//    $item->description = $request->input('description');
+        $item->status = 'active';
+        $item->price = (float) $request_data['price'];
+        $item->discount = (float) $request_data['discount'];
+        $item->unit = (int) $request_data['unit'];
+        $item->created_by = auth()->user()->id;
+        $item->updated_by = auth()->user()->id;
+        $item->save();
+
+        return $item;
+    }
+
+    public function update(UpdateItemRequest $request, Item $item): Item
+    {
+        
+        // $request_data = $request->validated();    
+        if ($item->parameter_ids !== ''){
+            $item->parameter_ids .= ',' . $request->value;
+        }
+        else {
+            $item->parameter_ids = $request->value;
+        }
+        $item->updated_by = auth()->id();
+        $item->save();
+
+        /*
+        if ($request->hasFile('description')) {
+            $path = $request->file('description')->store('items/descriptions', 'public');
+            $item->description = $path;
+            $item->updated_by = auth()->id();
+            $item->save();
+        }
+        */
+
+        return $item;
+    }
+
+}
