@@ -159,3 +159,9 @@ export interface Unit{
     name: string;
     value: number;
 }
+
+export interface ItemEditResponse {
+    item: Item;
+    itemparams: Itemparam[];
+    parameters: Itemparam[];
+}

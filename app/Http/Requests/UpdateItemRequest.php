@@ -23,6 +23,7 @@ class UpdateItemRequest extends FormRequest
     {
         return [
             'description' => ['nullable', 'file', 'max:10240'],
+            'website' => ['nullable', 'url'],
         ];
     }
 }

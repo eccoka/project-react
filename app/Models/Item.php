@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Itemgroup;
-use App\Models\User;
-use App\Models\Brand;
 
+/**
+ * @property-write string|null $brand
+ * @property-write string|null $group
+ */
 class Item extends Model
 {
     use HasFactory;
@@ -30,16 +31,15 @@ class Item extends Model
         'updated_at',
     ];
 
-
-    public function brand()
+    public function brandRelation()
     {
-        return $this->belongsTo(Brand::class, 'id');
-    }
-    public function group()
-    {
-        return $this->belongsTo(Itemgroup::class, 'id');
+        return $this->belongsTo(Brand::class, 'brandId');
     }
 
+    public function groupRelation()
+    {
+        return $this->belongsTo(Itemgroup::class, 'groupId');
+    }
 
     public function createdBy()
     {

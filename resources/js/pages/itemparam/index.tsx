@@ -11,17 +11,6 @@ import { Head, useForm } from '@inertiajs/react';
 import { PlusIcon } from 'lucide-react';
 import { FormEventHandler, useEffect, useState } from 'react';
 
-interface ItemparamRecord {
-    groupid: number | string;
-    param_name: string;
-    value: string;
-}
-
-interface GroupedItemparam {
-    param_name: string;
-    values: string[];
-}
-
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Itemparam index',
@@ -36,7 +25,7 @@ export default function ItemparamIndex({
     success: initialSuccess,
 }: {
     itemgroups: { data: Itemgroup[] };
-    itemparams: ItemparamRecord[];
+    itemparams: any[];
     selectedGroups?: { maingroupId: string; subgroupId: string; sub2groupId: string };
     error?: string;
     success?: string;
@@ -45,11 +34,11 @@ export default function ItemparamIndex({
     const [subgroups, setSubgroups] = useState<Itemgroup[]>([]);
     const [showSub2group, setShowSub2group] = useState(false);
     const [sub2groups, setSub2groups] = useState<Itemgroup[]>([]);
-    const [filteredItemparams, setFilteredItemparams] = useState<GroupedItemparam[]>([]);
+    const [filteredItemparams, setFilteredItemparams] = useState<any[]>([]);
     const [showNewValueForm, setShowNewValueForm] = useState<{ [key: string]: boolean }>({});
     const [newValue, setNewValue] = useState<{ [key: string]: string }>({});
 
-    const { data, setData, errors } = useForm({
+    const { data, setData, errors, post, processing } = useForm({
         maingroupId: selectedGroups?.maingroupId ?? '',
         subgroupId: selectedGroups?.subgroupId ?? '',
         sub2groupId: selectedGroups?.sub2groupId ?? '',
@@ -100,14 +89,22 @@ export default function ItemparamIndex({
     }, [data.subgroupId, itemgroups.data]);
 
     useEffect(() => {
-        // A paraméterek csak mindhárom select kiválasztása után jelenjenek meg.
-        const allGroupsSelected = Boolean(data.maingroupId && data.subgroupId && data.sub2groupId);
-        const filteredParams = allGroupsSelected
-            ? itemparams.filter((itemparam) => Number(itemparam.groupid) === Number(data.sub2groupId))
-            : [];
+        let filteredParams = itemparams;
+
+        if (data.maingroupId) {
+            filteredParams = itemparams.filter((itemparam) => itemparam.groupid === parseInt(data.maingroupId));
+        }
+
+        if (data.subgroupId) {
+            filteredParams = itemparams.filter((itemparam) => itemparam.groupid === parseInt(data.subgroupId));
+        }
+
+        if (data.sub2groupId) {
+            filteredParams = itemparams.filter((itemparam) => itemparam.groupid === parseInt(data.sub2groupId));
+        }
 
         // Group parameters by name
-        const groupedParams = filteredParams.reduce<Record<string, string[]>>((acc, itemparam) => {
+        const groupedParams = filteredParams.reduce((acc: any, itemparam: any) => {
             const { param_name } = itemparam;
             if (!acc[param_name]) {
                 acc[param_name] = [];
@@ -122,8 +119,17 @@ export default function ItemparamIndex({
             values,
         }));
 
-        setFilteredItemparams(formattedParams);
-    }, [data.maingroupId, data.subgroupId, data.sub2groupId, itemgroups.data, itemparams]);
+        if (data.maingroupId || data.subgroupId || data.sub2groupId) {
+            setFilteredItemparams(formattedParams);
+        } else {
+            setFilteredItemparams([]);
+        }
+    }, [data.maingroupId, data.subgroupId, data.sub2groupId, itemparams]);
+
+    const submit: FormEventHandler = (e) => {
+        e.preventDefault();
+        post(route('itemparam.index'));
+    };
 
     const submit1: FormEventHandler = (e) => {
         e.preventDefault();
@@ -173,12 +179,11 @@ export default function ItemparamIndex({
             )}
             <div className="px-4 py-2 text-xl font-semibold">Search parameter by item group</div>
             <Separator />
-            <div className="flex flex-row gap-4 py-4 pl-4 text-xs">
+            <form onSubmit={submit} className="flex flex-row gap-4 py-4 pl-4 text-xs">
                 <input type="hidden" name="from" value="index" />
                 <div className="mb-4">
                     <Select
                         name="maingroupId"
-                        value={data.maingroupId}
                         onValueChange={(value) => {
                             setData('maingroupId', value);
                             setData('subgroupId', ''); // Reset subgroup selection when main group changes
@@ -207,7 +212,6 @@ export default function ItemparamIndex({
                     <div className="mb-4">
                         <Select
                             name="subgroupId"
-                            value={data.subgroupId}
                             onValueChange={(value) => {
                                 setData('subgroupId', value);
                                 setData('sub2groupId', ''); // Reset sub2group selection when sub group changes
@@ -232,7 +236,7 @@ export default function ItemparamIndex({
 
                 {showSub2group && (
                     <div className="mb-4">
-                        <Select name="sub2groupId" value={data.sub2groupId} onValueChange={(value) => setData('sub2groupId', value)}>
+                        <Select name="sub2groupId" onValueChange={(value) => setData('sub2groupId', value)}>
                             <SelectTrigger id="sub2groupId">
                                 <SelectValue placeholder="Select subgroup 2" />
                             </SelectTrigger>
@@ -247,7 +251,7 @@ export default function ItemparamIndex({
                         <InputError message={errors.sub2groupId} />
                     </div>
                 )}
-            </div>
+            </form>
 
             {filteredItemparams.length > 0 && (
                 <div className="p-4">
@@ -260,7 +264,7 @@ export default function ItemparamIndex({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredItemparams.map((itemparam) => (
+                            {filteredItemparams.map((itemparam: any) => (
                                 <>
                                     <TableRow key={itemparam.param_name}>
                                         <TableCell
@@ -289,7 +293,7 @@ export default function ItemparamIndex({
                                             </button>
                                         </TableCell>
                                     </TableRow>
-                                    {itemparam.values.slice(1).map((value, index) => (
+                                    {itemparam.values.slice(1).map((value: any, index: number) => (
                                         <TableRow key={`${itemparam.param_name}-${index}`}>
                                             <TableCell className="border px-4 py-2">{value}</TableCell>
                                         </TableRow>

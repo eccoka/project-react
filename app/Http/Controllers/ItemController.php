@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Item;
-use App\Models\Brand;
 use App\Enums\ItemUnit;
+use App\Http\Requests\StoreItemRequest;
+use App\Http\Requests\UpdateItemRequest;
+use App\Http\Resources\ItemResource;
+use App\Models\Brand;
+use App\Models\Item;
 use App\Models\ItemGroup;
 use App\Models\Itemparam;
 use App\Services\ItemService;
-use App\Http\Resources\ItemResource;
-use App\Http\Requests\StoreItemRequest;
-use App\Http\Requests\UpdateItemRequest;
 use Illuminate\Http\Request;
 
 class ItemController extends Controller
@@ -20,7 +20,7 @@ class ItemController extends Controller
      */
     public function index()
     {
-        $itemsQuery = (new ItemService())->index();
+        $itemsQuery = (new ItemService)->index();
 
         $items = $itemsQuery->paginate(15)->onEachSide(1);
 
@@ -42,7 +42,6 @@ class ItemController extends Controller
             ];
         }, $units);
 
-
         return inertia('item/create', [
             'brands' => Brand::all(),
             'itemgroups' => ItemGroup::all(),
@@ -56,7 +55,7 @@ class ItemController extends Controller
     public function store(StoreItemRequest $request)
     {
 
-        $item = (new ItemService())->store($request);
+        $item = (new ItemService)->store($request);
 
         $parameters = Itemparam::query()->where('status', 'active')
             ->where('groupid', $item->groupId)
@@ -67,15 +66,6 @@ class ItemController extends Controller
             'parameters' => $parameters,
         ]);
 
-
-    }
-
-    public function paramstore(Request $request)
-    {
-        $item = (new ItemService())->paramstore($request);
-        //dd($item);
-        //return redirect()->route('items.show', $item->id)->with('success', 'Item created successfully.');
-
     }
 
     /**
@@ -83,37 +73,40 @@ class ItemController extends Controller
      */
     public function show(Item $item)
     {
-        $items = (new ItemService())->show($item);
+        $items = (new ItemService)->show($item);
 
         return inertia('item/show', [
             'item' => $items['item'],
             'itemparams' => $items['itemparams'],
+            'success' => session('success'),
         ]);
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Item $item, Request $request)
+    public function edit(Item $item)
     {
-        $items = (new ItemService())->edit($item, $request);
+        $items = (new ItemService)->edit($item);
 
-        //dd($parameters);
+        // dd($parameters);
         return inertia('item/edit', [
             'item' => $items['item'],
             'itemparams' => $items['itemparams'],
             'parameters' => $items['parameters'],
-            
+
         ]);
     }
+
     /**
      * Update the specified resource in storage.
      */
     public function update(UpdateItemRequest $request, Item $item)
     {
-        $item = (new ItemService())->update($request, $item);
+        // dd($request->all()); // Debugging line to check the incoming request data
+        $item = (new ItemService)->update($request, $item);
 
-        return redirect()->route('item.show', $item->id);
+        return redirect()->route('item.show', $item->id)->with('success', 'Updated successfully!');
     }
 
     /**

@@ -4,22 +4,15 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/layouts/app-layout';
-import { Item, Itemparam, type BreadcrumbItem } from '@/types';
+import { Itemparam, type BreadcrumbItem, ItemEditResponse } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
-
 
 export default function ItemEdit({
     item,
     itemparams,
     parameters,
-
-}: {
-    item: Item;
-    itemparams: Itemparam[];
-    parameters: Itemparam[];
-
-}) {
+}: ItemEditResponse) {
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Item edit',
@@ -108,7 +101,7 @@ export default function ItemEdit({
                                     </SelectTrigger>
                                     <SelectContent>
                                         {filteredValues.map((parameter: Itemparam) => (
-                                            <SelectItem key={`value-${parameter.id}`} value={parameter.value}>
+                                            <SelectItem key={`value-${parameter.id}`} value={parameter.id.toString()}>
                                                 {parameter.value}
                                             </SelectItem>
                                         ))}
@@ -121,7 +114,6 @@ export default function ItemEdit({
                         </Button>
                     </form>
                 </CardContent>
-
             </Card>
         </AppLayout>
     );
